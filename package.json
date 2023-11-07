@@ -1,0 +1,23 @@
+{
+  "name": "ai-pc-performance",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/samuelo1/ai-pc-performance.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/samuelo1/ai-pc-performance/issues"
+  },
+  "homepage": "https://github.com/samuelo1/ai-pc-performance#readme",
+  "dependencies": {
+    "selenium-webdriver": "^4.15.0"
+  }
+}
