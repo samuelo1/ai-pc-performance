@@ -15,12 +15,16 @@ stream.once("open", async function (fd) {
     const page = {};
 
     const getLoadedElement = async (selector) => {
+        try {
       const element = driver.findElement(By.css(selector));
       await driver.wait(
         until.elementTextMatches(element, new RegExp(".+")),
         10000
       );
       return await element;
+        } catch (e) {
+            return {getText: () => ""};
+        }
     };
 
     const getNumberFromText = (text) => {
