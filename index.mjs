@@ -9,22 +9,28 @@ const driver = await new Builder().forBrowser("chrome").build();
 var stream = fs.createWriteStream("training-data.csv");
 stream.once("open", async function (fd) {
   for (let i = 0; i < FETCH_COUNT; i++) {
-    const randomEightDigitNum = Math.floor(Math.random() * 10 ** 8);
-    console.log("Fetching ", randomEightDigitNum);
-    await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
+    do {
+      const randomEightDigitNum = Math.floor(Math.random() * 10 ** 8);
+      console.log("Fetching ", randomEightDigitNum);
+      await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
+
+      const errorElement = await getLoadedElement(
+        "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
+      );
+    } while (errorElement.getText());
     const page = {};
 
     const getLoadedElement = async (selector) => {
-        try {
-      const element = driver.findElement(By.css(selector));
-      await driver.wait(
-        until.elementTextMatches(element, new RegExp(".+")),
-        10000
-      );
-      return await element;
-        } catch (e) {
-            return {getText: () => ""};
-        }
+      try {
+        const element = driver.findElement(By.css(selector));
+        await driver.wait(
+          until.elementTextMatches(element, new RegExp(".+")),
+          10000
+        );
+        return await element;
+      } catch (e) {
+        return { getText: () => "" };
+      }
     };
 
     const getNumberFromText = (text) => {
