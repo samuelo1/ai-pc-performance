@@ -96,6 +96,55 @@ const coreCountElement = await getLoadedElement('#body > div.container > div.col
 const coreCountText = await coreCountElement.getText();
 page.coreCount = getNumberFromText(coreCountText)
 
+const packageElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(14)')
+page.package = await packageElement.getText();
+
+const manufacturingProcessElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(16)')
+const manufacturingProcessText = await manufacturingProcessElement.getText();
+page.manufacturingProcess = getNumberFromText(manufacturingProcessText)
+
+const tdpElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(18)')
+const tdpText = await tdpElement.getText();
+page.tdp = getNumberFromText(tdpText)
+
+const osElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(2)')
+let osText = await osElement.getText();
+osText = osText.split(' (')
+page.os = osText[0]
+
+const motherboardModelElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(4)')
+page.motherboardModel = await motherboardModelElement.getText();
+
+const memoryElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(6)')
+const memoryText = await memoryElement.getText();
+page.memory = getNumberFromText(memoryText)
+
+const getModuleInfo = (text) => {
+    const [memModSize, remainingMemModText] = text.split(' MB ')
+    const [memModBrand, memModSpeed] = remainingMemModText.split(' @ ')
+    return [memModSize, memModBrand, memModSpeed]
+}
+const memoryModule1Element = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(8)')
+const memoryModule1Text = await memoryModule1Element.getText();
+([page.memMod1Size, page.memMod1Brand, page.memMod1Speed] = getModuleInfo(memoryModule1Text))
+
+const memoryModule2Element = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(10)')
+const memoryModule2Text = await memoryModule2Element.getText();
+([page.memMod2Size, page.memMod2Brand, page.memMod2Speed] = getModuleInfo(memoryModule2Text))
+
+const hardDriveElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(12)')
+const hardDriveText = await hardDriveElement.getText();
+const [hardDriveSizeText, hardDriveModelText] = hardDriveText.split(' GB ');
+page.hardDriveSize = getNumberFromText(hardDriveSizeText)
+page.hardDriveModel = hardDriveModelText
+
+const vbsStatusElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(14)')
+page.vbsStatus = await vbsStatusElement.getText()
+
+const hvciStatusElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(16)')
+page.hvciStatus = await hvciStatusElement.getText()
+
+
 driver.close();
 
 console.log("page:", page);
