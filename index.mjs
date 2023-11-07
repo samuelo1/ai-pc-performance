@@ -1,11 +1,17 @@
 import {Builder, By, until} from 'selenium-webdriver';
 // const options = new Options();
 // const driver = await new Builder().forBrowser('chrome').setChromeOptions(options.addArguments('--headless=new')).build();
+const FETCH_COUNT = 100
+
 const driver = await new Builder().forBrowser('chrome').build();
 
+const data = []
 
-await driver.get('https://www.3dmark.com/spy/36197169')
-const page = {}
+for(let i =0; i < FETCH_COUNT; i++){
+  const randomEightDigitNum = Math.floor(Math.random() * (10**8));
+  console.log("Fetching ", randomEightDigitNum);
+  await driver.get('https://www.3dmark.com/spy/' + randomEightDigitNum);
+  const page = {}
 
 const getLoadedElement = async (selector) => {
     const element = driver.findElement(By.css(selector))
@@ -99,3 +105,17 @@ page.coreCount = getNumberFromText(coreCountText)
 driver.close();
 
 console.log("page:", page);
+pages.push(page);
+}
+
+const fields = Object.keys(json[0]);
+let csv = [
+  fields.join(","),
+  ...json.map((page) => {
+    let row = fields.map((field) => page[field]);
+    return row.join(",");
+  }),
+];
+
+csv = csv.join("\n");
+console.log(csv);
