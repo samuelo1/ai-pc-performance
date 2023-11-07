@@ -88,11 +88,8 @@ stream.once("open", async function (fd) {
     const page = {};
 
     const setPageValues = (section, field, value) => {
+        field = field.toLowerCase().trim();
         switch (field) {
-            case "sli / crossfire":
-                page[field] = value.toLowerCase() === "on";
-                break;
-
             case "average temperature":
             case "average memory clock frequency":
             case "average clock frequency":
