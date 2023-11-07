@@ -36,12 +36,13 @@ const getFrequencyNums = (text) => {
 var stream = fs.createWriteStream("training-data.csv");
 stream.once("open", async function (fd) {
   for (let i = 0; i < FETCH_COUNT; i++) {
+    let errorElement;
     do {
       const randomEightDigitNum = Math.floor(Math.random() * 10 ** 8);
       console.log("Fetching ", randomEightDigitNum);
       await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
 
-      const errorElement = await getLoadedElement(
+      errorElement = await getLoadedElement(
         "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
       );
     } while (errorElement.getText());
