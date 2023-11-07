@@ -6,6 +6,33 @@ const FETCH_COUNT = 100;
 
 const driver = await new Builder().forBrowser("chrome").build();
 
+const getLoadedElement = async (selector) => {
+  try {
+    const element = driver.findElement(By.css(selector));
+    await driver.wait(
+      until.elementTextMatches(element, new RegExp(".+")),
+      10000
+    );
+    return await element;
+  } catch (e) {
+    return { getText: () => "" };
+  }
+};
+
+const getNumberFromText = (text) => {
+  text = text.replace(/\s/g, "");
+  text = text.replace(/,/g, "");
+  return parseInt(text);
+};
+
+const getFrequencyNums = (text) => {
+  const [memClockFrequencyTextMax, memClockFrequencyTextMin] = text.split("(");
+  return [
+    getNumberFromText(memClockFrequencyTextMin),
+    getNumberFromText(memClockFrequencyTextMax),
+  ];
+};
+
 var stream = fs.createWriteStream("training-data.csv");
 stream.once("open", async function (fd) {
   for (let i = 0; i < FETCH_COUNT; i++) {
@@ -19,34 +46,6 @@ stream.once("open", async function (fd) {
       );
     } while (errorElement.getText());
     const page = {};
-
-    const getLoadedElement = async (selector) => {
-      try {
-        const element = driver.findElement(By.css(selector));
-        await driver.wait(
-          until.elementTextMatches(element, new RegExp(".+")),
-          10000
-        );
-        return await element;
-      } catch (e) {
-        return { getText: () => "" };
-      }
-    };
-
-    const getNumberFromText = (text) => {
-      text = text.replace(/\s/g, "");
-      text = text.replace(/,/g, "");
-      return parseInt(text);
-    };
-
-    const getFrequencyNums = (text) => {
-      const [memClockFrequencyTextMax, memClockFrequencyTextMin] =
-        text.split("(");
-      return [
-        getNumberFromText(memClockFrequencyTextMin),
-        getNumberFromText(memClockFrequencyTextMax),
-      ];
-    };
 
     const scoreElement = await getLoadedElement(
       "#body > div.container > div.result-header.clearfix.mb0.hidden > div.result-header-details.column3-2 > div.result-header-details-header.clearfix > h1 > span:nth-child(2)"
