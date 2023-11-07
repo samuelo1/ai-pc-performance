@@ -8,11 +8,6 @@ const driver = await new Builder().forBrowser("chrome").build();
 
 var stream = fs.createWriteStream("training-data.csv");
 stream.once("open", async function (fd) {
-  const fields = Object.keys(json[0]);
-
-  stream.write(fields.join(","));
-  stream.write("\n");
-
   for (let i = 0; i < FETCH_COUNT; i++) {
     const randomEightDigitNum = Math.floor(Math.random() * 10 ** 8);
     console.log("Fetching ", randomEightDigitNum);
@@ -238,6 +233,12 @@ stream.once("open", async function (fd) {
     driver.close();
 
     console.log("page:", page);
+
+    if (i === 0) {
+      const fields = Object.keys(page[0]);
+      stream.write(fields.join(","));
+      stream.write("\n");
+    }
 
     let row = fields.map((field) => page[field]);
     stream.write(row.join(","));
