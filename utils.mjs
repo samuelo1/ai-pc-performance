@@ -15,5 +15,5 @@ export const getFrequencyNums = (text) => {
 export const getModuleInfo = (text) => {
     const [memModSize, remainingMemModText] = text.split(" MB ");
     const [memModBrand, memModSpeed] = remainingMemModText.split(" @ ");
-    return [memModSize, memModBrand, memModSpeed];
+    return [memModSize, memModBrand, getNumberFromText(memModSpeed)];
 };
