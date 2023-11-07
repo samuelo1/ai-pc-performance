@@ -7,33 +7,84 @@ const FETCH_COUNT = 100;
 
 const driver = await new Builder().forBrowser("chrome").build();
 
+const fields = [
+    "graphics card",
+    "# of cards",
+    "sli / crossfire",
+    "gpu memory",
+    "cpu memory",
+    "general memory",
+    "driver version",
+    "driver status",
+    "ecc video memory",
+    "package",
+    "processor",
+    "motherboard",
+    "vbs status",
+    "hvci status",
+    "gpu average temperature",
+    "cpu average temperature",
+    "gpu average clock frequency",
+    "cpu average clock frequency",
+    "gpu memory average clock frequency",
+    "gpu clock frequency min",
+    "gpu clock frequency max",
+    "cpu clock frequency min",
+    "cpu clock frequency max",
+    "gpu memory clock frequency min",
+    "gpu memory clock frequency max",
+    "cpu physical processors",
+    "cpu logical processors",
+    "# of cores",
+    "manufacturing process",
+    "tdp",
+    "operating system",
+    "general module 1 size",
+    "general module 1 brand",
+    "general module 1 speed",
+    "general module 2 size",
+    "general module 2 brand",
+    "general module 2 speed",
+    "general hard drive model",
+    "general hard drive model size",
+];
+
 export const getLoadedElement = async (selector) => {
     try {
-        const element = driver.findElement(By.css(selector));
+        let element = await driver.findElements(By.css(selector));
+        console.log("element:", element)
+        if(element.length === 0) {
+            return {getText: () => ""};
+        }
+        element = element[0];
         await driver.wait(
             until.elementTextMatches(element, new RegExp(".+")),
             10000
         );
-        return await element;
-    } catch (e) {
-        return { getText: () => "" };
-    }
+        return element;
+        } catch (e) {
+            console.error(e);
+            return {getText: () => ""};
+        }
 };
 
 var stream = fs.createWriteStream("training-data.csv");
 stream.once("open", async function (fd) {
   for (let i = 0; i < FETCH_COUNT; i++) {
-    let errorElement;
+    let hasErrorElement = true;
     do {
-        errorElement = undefined;
       const randomEightDigitNum = Math.floor(Math.random() * 10 ** 8);
       console.log("Fetching ", randomEightDigitNum);
       await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
+    //   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-      errorElement = await getLoadedElement(
-        "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
-      );
-    } while (errorElement.getText());
+    //   errorElement = await getLoadedElement(
+    //     "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
+    //   );
+        let errorElement = await driver.findElements(By.css("#body > div.container > div > div.column3-2.maincontent > div > div > div.error"));
+      hasErrorElement = errorElement.length;
+      console.log("errorElement:", errorElement);
+    } while (hasErrorElement);
     const page = {};
 
     const setPageValues = (section, field, value) => {
@@ -42,12 +93,19 @@ stream.once("open", async function (fd) {
                 page[field] = value.toLowerCase() === "on";
                 break;
 
+            case "average temperature":
+            case "average memory clock frequency":
+            case "average clock frequency":
+            case "memory":
+                page[section + " " + field] = value;
+                break;
+
             case "clock frequency":
             case "memory clock frequency":
                 ([page[section + " " + field + " min"], page[section + " " + field + " max"]] = value);
                 break;
 
-            case "pyhsical / logical processors":
+            case "physical / logical processors":
                 ([page[section + " physical processors"], page[section + " logical processors"]] = value);
                 break;
 
@@ -101,12 +159,9 @@ stream.once("open", async function (fd) {
         setPageValues("general", field, value);
     }
 
-    driver.close();
-
     console.log("page:", page);
 
     if (i === 0) {
-      fields = Object.keys(page);
       stream.write(fields.join(","));
       stream.write("\n");
     }

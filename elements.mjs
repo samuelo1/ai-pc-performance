@@ -25,7 +25,7 @@ export async function getFieldValue(title, element) {
         case "memory clock frequency":
             return getFrequencyNums(elementText);
 
-        case "pyhsical / logical processors":
+        case "physical / logical processors":
             const [physicalProcessors, logicalProcessors] =
                 elementText.split("/");
             return [getNumberFromText(physicalProcessors), getNumberFromText(logicalProcessors)];
