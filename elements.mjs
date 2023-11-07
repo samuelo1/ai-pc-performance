@@ -3,11 +3,11 @@ const page = {};
 
 export async function getFieldValue(title, element) {
     title = title.toLowerCase().trim();
-    const elementText = await element.getText();
+    let elementText = await element.getText();
+    elementText = elementText.replace(/,/g, '');
     switch (title) {
 
         case "graphics card":
-        case "memory":
         case "driver version":
         case "driver status":
         case "ecc video memory":
@@ -44,60 +44,7 @@ export async function getFieldValue(title, element) {
         default:
             return getNumberFromText(elementText);
     }
-    // // const scoreElement = await getLoadedElement(
-    //     "#body > div.container > div.result-header.clearfix.mb0.hidden > div.result-header-details.column3-2 > div.result-header-details-header.clearfix > h1 > span:nth-child(2)"
-    // );
-
-    // // const graphicsCardElement = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(2) > a"
-    // );
-
-    // // const numCardsElement = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(6)"
-    // );
-
-
-    // // const crossFireElement = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(8)"
-    // );
-
-    // // const gpuMemory = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(10)"
-    // );
-
-    // // const gpuClockSpeedElement = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(12)"
-    // );
-
-
-    // // const avgGpuClockFrequencyElement = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(14)"
-    // );
-
-
-    // // const memClockFrequencyElement = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(16)"
-    // );
-
-    // // const avgMemClockFrequencyElement = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(18)"
-    // );
-
-
-    // // const avgTempElement = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(20)"
-    // );
-
-
-    // // const driverVersionElement = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(22)"
-    // );
-
-    // // const driverStatus = await getLoadedElement(
-    //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(24)"
-    // );
-
-    // // const eccMemory = await getLoadedElement(
+}
     //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(26)"
     // );
 
@@ -176,6 +123,3 @@ export async function getFieldValue(title, element) {
     // // const hvciStatusElement = await getLoadedElement(
     //     "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(16)"
     // );
-
-
-}

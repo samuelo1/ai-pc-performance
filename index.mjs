@@ -1,18 +1,20 @@
 import { Builder, By, until } from "selenium-webdriver";
 import { getFieldValue } from "./elements.mjs";
+import { getNumberFromText } from "./utils.mjs";
 import fs from "fs";
 // const options = new Options();
 // const driver = await new Builder().forBrowser('chrome').setChromeOptions(options.addArguments('--headless=new')).build();
-const FETCH_COUNT = 100;
+const FETCH_COUNT = 10;
 
 const driver = await new Builder().forBrowser("chrome").build();
 
 const fields = [
+    "3dmark id",
+    "score",
     "graphics card",
     "# of cards",
     "sli / crossfire",
     "gpu memory",
-    "cpu memory",
     "general memory",
     "driver version",
     "driver status",
@@ -26,7 +28,7 @@ const fields = [
     "cpu average temperature",
     "gpu average clock frequency",
     "cpu average clock frequency",
-    "gpu memory average clock frequency",
+    "gpu average memory clock frequency",
     "gpu clock frequency min",
     "gpu clock frequency max",
     "cpu clock frequency min",
@@ -69,11 +71,13 @@ export const getLoadedElement = async (selector) => {
 };
 
 var stream = fs.createWriteStream("training-data.csv");
+const currentTime = Date.now();
 stream.once("open", async function (fd) {
   for (let i = 0; i < FETCH_COUNT; i++) {
     let hasErrorElement = true;
+      let randomEightDigitNum;
     do {
-      const randomEightDigitNum = Math.floor(Math.random() * 10 ** 8);
+      randomEightDigitNum = Math.floor(Math.random() * 10 ** 8);
       console.log("Fetching ", randomEightDigitNum);
       await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
     //   await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -119,6 +123,14 @@ stream.once("open", async function (fd) {
                 break;
         }   
     }
+
+    page["3dmark id"] = randomEightDigitNum;
+
+    const scoreElement = await getLoadedElement(
+        "#body > div.container > div.result-header.clearfix.mb0.hidden > div.result-header-details.column3-2 > div.result-header-details-header.clearfix > h1 > span:nth-child(2)"
+     );
+    const score = await scoreElement.getText();
+    page["score"] = getNumberFromText(score);
 
     const gpuInfo = await getLoadedElement(
         "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl"
@@ -170,4 +182,7 @@ stream.once("open", async function (fd) {
 
   stream.end();
   driver.close();
+    const laterTime = Date.now();
+    console.log("Time taken:", laterTime - currentTime);
 });
+
