@@ -69,8 +69,24 @@ export const getLoadedElement = async (selector) => {
   }
 };
 
-var stream = fs.createWriteStream("training-data.csv");
-var errstream = fs.createWriteStream("training-errors.csv");
+const now = new Date();
+var nowAsString =
+  now.getMonth() +
+  "-" +
+  now.getDate() +
+  "-" +
+  now.getFullYear() +
+  "_" +
+  now.getHours() +
+  ":" +
+  now.getMinutes() +
+  ":" +
+  now.getSeconds() +
+  ":" +
+  now.getMilliseconds();
+
+var stream = fs.createWriteStream(`training-data-${nowAsString}.csv`);
+var errstream = fs.createWriteStream(`training-errors-${nowAsString}.csv`);
 
 process.on("SIGINT", () => {
   stream.end();
