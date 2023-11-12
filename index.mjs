@@ -83,12 +83,10 @@ var nowAsString =
   now.getFullYear() +
   "_" +
   now.getHours() +
-  ":" +
+  "-" +
   now.getMinutes() +
-  ":" +
-  now.getSeconds() +
-  ":" +
-  now.getMilliseconds();
+  "-" +
+  now.getSeconds();
 
 var stream = fs.createWriteStream(`training-data-${nowAsString}.csv`);
 var errstream = fs.createWriteStream(`training-errors-${nowAsString}.csv`);
@@ -98,132 +96,133 @@ process.on("SIGINT", () => {
   driver.close();
 });
 
-errstream.once("open", async function (fd) {
-  stream.once("open", async function (fd) {
-    let isFirstRun = true;
-    while (true) {
-      let hasErrorElement = true;
-      let randomEightDigitNum;
-      try {
-        do {
-          randomEightDigitNum = Math.floor((Math.random() / 2) * 10 ** 8);
-          await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
-          //   await new Promise((resolve) => setTimeout(resolve, 5000));
+// errstream.once("open", async function (fd) {
+// this is a race condition but it should pretty much always work and I don't feel like figuring out why it's not
+stream.once("open", async function (fd) {
+  let isFirstRun = true;
+  while (true) {
+    let hasErrorElement = true;
+    let randomEightDigitNum;
+    try {
+      do {
+        randomEightDigitNum = Math.floor((Math.random() / 2) * 10 ** 8);
+        await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
+        //   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-          //   errorElement = await getLoadedElement(
-          //     "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
-          //   );
-          let errorElement = await driver.findElements(
-            By.css(
-              "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
-            )
-          );
-          hasErrorElement = errorElement.length;
-        } while (hasErrorElement);
-        const page = {};
-
-        const setPageValues = (section, field, value) => {
-          field = field.toLowerCase().trim();
-          switch (field) {
-            case "average temperature":
-            case "average memory clock frequency":
-            case "average clock frequency":
-            case "memory":
-              page[section + " " + field] = value;
-              break;
-
-            case "clock frequency":
-            case "memory clock frequency":
-              [
-                page[section + " " + field + " min"],
-                page[section + " " + field + " max"],
-              ] = value;
-              break;
-
-            case "physical / logical processors":
-              [
-                page[section + " physical processors"],
-                page[section + " logical processors"],
-              ] = value;
-              break;
-
-            case "module 1":
-            case "module 2":
-              [
-                page[section + " " + field + " size"],
-                page[section + " " + field + " brand"],
-                page[section + " " + field + " speed"],
-              ] = value;
-              break;
-
-            case "hard drive model":
-              [
-                page[section + " " + field + " size"],
-                page[section + " " + field],
-              ] = value;
-
-            default:
-              page[field] = value;
-              break;
-          }
-        };
-
-        page["3dmark id"] = randomEightDigitNum;
-
-        const scoreElement = await getLoadedElement(
-          "#body > div.container > div.result-header.clearfix.mb0.hidden > div.result-header-details.column3-2 > div.result-header-details-header.clearfix > h1 > span:nth-child(2)"
+        //   errorElement = await getLoadedElement(
+        //     "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
+        //   );
+        let errorElement = await driver.findElements(
+          By.css(
+            "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
+          )
         );
-        const score = await scoreElement.getText();
-        page["score"] = getNumberFromText(score);
+        hasErrorElement = errorElement.length;
+      } while (hasErrorElement);
+      const page = {};
 
-        const gpuInfo = await getLoadedElement(
-          "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl"
-        );
-        const gpuInfoFields = await gpuInfo.findElements(By.css("dt"));
-        const gpuInfoValues = await gpuInfo.findElements(By.css("dd"));
+      const setPageValues = (section, field, value) => {
+        field = field.toLowerCase().trim();
+        switch (field) {
+          case "average temperature":
+          case "average memory clock frequency":
+          case "average clock frequency":
+          case "memory":
+            page[section + " " + field] = value;
+            break;
 
-        for (let i = 0; i < gpuInfoFields.length; i++) {
-          const field = await gpuInfoFields[i].getText();
-          const value = await getFieldValue(field, gpuInfoValues[i]);
-          setPageValues("gpu", field, value);
+          case "clock frequency":
+          case "memory clock frequency":
+            [
+              page[section + " " + field + " min"],
+              page[section + " " + field + " max"],
+            ] = value;
+            break;
+
+          case "physical / logical processors":
+            [
+              page[section + " physical processors"],
+              page[section + " logical processors"],
+            ] = value;
+            break;
+
+          case "module 1":
+          case "module 2":
+            [
+              page[section + " " + field + " size"],
+              page[section + " " + field + " brand"],
+              page[section + " " + field + " speed"],
+            ] = value;
+            break;
+
+          case "hard drive model":
+            [
+              page[section + " " + field + " size"],
+              page[section + " " + field],
+            ] = value;
+
+          default:
+            page[field] = value;
+            break;
         }
+      };
 
-        const cpuInfo = await getLoadedElement(
-          "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl"
-        );
-        const cpuInfoFields = await cpuInfo.findElements(By.css("dt"));
-        const cpuInfoValues = await cpuInfo.findElements(By.css("dd"));
+      page["3dmark id"] = randomEightDigitNum;
 
-        for (let i = 0; i < cpuInfoFields.length; i++) {
-          const field = await cpuInfoFields[i].getText();
-          const value = await getFieldValue(field, cpuInfoValues[i]);
-          setPageValues("cpu", field, value);
-        }
+      const scoreElement = await getLoadedElement(
+        "#body > div.container > div.result-header.clearfix.mb0.hidden > div.result-header-details.column3-2 > div.result-header-details-header.clearfix > h1 > span:nth-child(2)"
+      );
+      const score = await scoreElement.getText();
+      page["score"] = getNumberFromText(score);
 
-        const generalInfo = await getLoadedElement(
-          "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl"
-        );
-        const generalInfoFields = await generalInfo.findElements(By.css("dt"));
-        const generalInfoValues = await generalInfo.findElements(By.css("dd"));
+      const gpuInfo = await getLoadedElement(
+        "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl"
+      );
+      const gpuInfoFields = await gpuInfo.findElements(By.css("dt"));
+      const gpuInfoValues = await gpuInfo.findElements(By.css("dd"));
 
-        for (let i = 0; i < generalInfoFields.length; i++) {
-          const field = await generalInfoFields[i].getText();
-          const value = await getFieldValue(field, generalInfoValues[i]);
-          setPageValues("general", field, value);
-        }
-
-        if (isFirstRun) {
-          isFirstRun = false;
-          stream.write(fields.join(","));
-          stream.write("\n");
-        }
-
-        let row = fields.map((field) => page[field]);
-        stream.write(row.join(","));
-        stream.write("\n");
-      } catch (e) {
-        errstream.write(`${randomEightDigitNum}\t${e.message}\n`);
+      for (let i = 0; i < gpuInfoFields.length; i++) {
+        const field = await gpuInfoFields[i].getText();
+        const value = await getFieldValue(field, gpuInfoValues[i]);
+        setPageValues("gpu", field, value);
       }
+
+      const cpuInfo = await getLoadedElement(
+        "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl"
+      );
+      const cpuInfoFields = await cpuInfo.findElements(By.css("dt"));
+      const cpuInfoValues = await cpuInfo.findElements(By.css("dd"));
+
+      for (let i = 0; i < cpuInfoFields.length; i++) {
+        const field = await cpuInfoFields[i].getText();
+        const value = await getFieldValue(field, cpuInfoValues[i]);
+        setPageValues("cpu", field, value);
+      }
+
+      const generalInfo = await getLoadedElement(
+        "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl"
+      );
+      const generalInfoFields = await generalInfo.findElements(By.css("dt"));
+      const generalInfoValues = await generalInfo.findElements(By.css("dd"));
+
+      for (let i = 0; i < generalInfoFields.length; i++) {
+        const field = await generalInfoFields[i].getText();
+        const value = await getFieldValue(field, generalInfoValues[i]);
+        setPageValues("general", field, value);
+      }
+
+      if (isFirstRun) {
+        isFirstRun = false;
+        stream.write(fields.join(","));
+        stream.write("\n");
+      }
+
+      let row = fields.map((field) => page[field]);
+      stream.write(row.join(","));
+      stream.write("\n");
+    } catch (e) {
+      errstream.write(`${randomEightDigitNum}\t${e.message}\n`);
     }
-  });
+  }
 });
+// });
