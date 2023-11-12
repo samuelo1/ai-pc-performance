@@ -1,4 +1,5 @@
 import { Builder, By, until } from "selenium-webdriver";
+import chrome from "selenium-webdriver/chrome.js";
 import { getFieldValue } from "./elements.mjs";
 import { getNumberFromText } from "./utils.mjs";
 import fs from "fs";
@@ -6,7 +7,12 @@ import fs from "fs";
 // const driver = await new Builder().forBrowser('chrome').setChromeOptions(options.addArguments('--headless=new')).build();
 const FETCH_COUNT = 10;
 
-const driver = await new Builder().forBrowser("chrome").build();
+const options = new chrome.Options();
+options.addArguments("--headless");
+const driver = await new Builder()
+  .forBrowser("chrome")
+  .setChromeOptions(options)
+  .build(options);
 
 const fields = [
   "3dmark id",
