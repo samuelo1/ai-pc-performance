@@ -70,9 +70,15 @@ export const getLoadedElement = async (selector) => {
 };
 
 var stream = fs.createWriteStream("training-data.csv");
-const currentTime = Date.now();
+
+process.on("SIGINT", () => {
+  stream.end();
+  driver.close();
+});
+
 stream.once("open", async function (fd) {
-  for (let i = 0; i < FETCH_COUNT; i++) {
+  let isFirstRun = true;
+  while (true) {
     let hasErrorElement = true;
     let randomEightDigitNum;
     do {
@@ -180,7 +186,8 @@ stream.once("open", async function (fd) {
       setPageValues("general", field, value);
     }
 
-    if (i === 0) {
+    if (isFirstRun) {
+      isFirstRun = false;
       stream.write(fields.join(","));
       stream.write("\n");
     }
@@ -189,9 +196,4 @@ stream.once("open", async function (fd) {
     stream.write(row.join(","));
     stream.write("\n");
   }
-
-  stream.end();
-  driver.close();
-  const laterTime = Date.now();
 });
-
