@@ -76,7 +76,7 @@ stream.once("open", async function (fd) {
     let hasErrorElement = true;
     let randomEightDigitNum;
     do {
-      randomEightDigitNum = Math.floor(Math.random() * 10 ** 8);
+      randomEightDigitNum = Math.floor((Math.random() / 2) * 10 ** 8);
       await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
       //   await new Promise((resolve) => setTimeout(resolve, 5000));
 
