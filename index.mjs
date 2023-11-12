@@ -98,13 +98,13 @@ process.on("SIGINT", () => {
   driver.close();
 });
 
-errstream.once("open", () => {
+errstream.once("open", async function (fd) {
   stream.once("open", async function (fd) {
     let isFirstRun = true;
     while (true) {
+      let hasErrorElement = true;
+      let randomEightDigitNum;
       try {
-        let hasErrorElement = true;
-        let randomEightDigitNum;
         do {
           randomEightDigitNum = Math.floor((Math.random() / 2) * 10 ** 8);
           await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
