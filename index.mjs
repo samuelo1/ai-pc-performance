@@ -1,150 +1,228 @@
-import {Builder, By, until} from 'selenium-webdriver';
+import { Builder, By, until } from "selenium-webdriver";
+import chrome from "selenium-webdriver/chrome.js";
+import { getFieldValue } from "./elements.mjs";
+import { getNumberFromText } from "./utils.mjs";
+import fs from "fs";
 // const options = new Options();
 // const driver = await new Builder().forBrowser('chrome').setChromeOptions(options.addArguments('--headless=new')).build();
-const driver = await new Builder().forBrowser('chrome').build();
+const FETCH_COUNT = 10;
 
+const options = new chrome.Options();
+options.addArguments("--headless");
+const driver = await new Builder()
+  .forBrowser("chrome")
+  .setChromeOptions(options)
+  .build(options);
 
-await driver.get('https://www.3dmark.com/spy/36197169')
-const page = {}
+const fields = [
+  "3dmark id",
+  "graphics card",
+  "# of cards",
+  "sli / crossfire",
+  "gpu memory",
+  "general memory",
+  "driver version",
+  "driver status",
+  "ecc video memory",
+  "package",
+  "processor",
+  "motherboard",
+  "vbs status",
+  "hvci status",
+  "gpu average temperature",
+  "cpu average temperature",
+  "gpu average clock frequency",
+  "cpu average clock frequency",
+  "gpu average memory clock frequency",
+  "gpu clock frequency min",
+  "gpu clock frequency max",
+  "cpu clock frequency min",
+  "cpu clock frequency max",
+  "gpu memory clock frequency min",
+  "gpu memory clock frequency max",
+  "cpu physical processors",
+  "cpu logical processors",
+  "# of cores",
+  "manufacturing process",
+  "tdp",
+  "operating system",
+  "general module 1 size",
+  "general module 1 brand",
+  "general module 1 speed",
+  "general module 2 size",
+  "general module 2 brand",
+  "general module 2 speed",
+  "general hard drive model",
+  "general hard drive model size",
+  "score",
+];
 
-const getLoadedElement = async (selector) => {
-    const element = driver.findElement(By.css(selector))
-    await driver.wait(until.elementTextMatches(element, new RegExp(".+")), 10000);
-    return await element;
-}
+export const getLoadedElement = async (selector) => {
+  try {
+    let element = await driver.findElements(By.css(selector));
+    if (element.length === 0) {
+      return { getText: () => "" };
+    }
+    element = element[0];
+    await driver.wait(
+      until.elementTextMatches(element, new RegExp(".+")),
+      10000
+    );
+    return element;
+  } catch (e) {
+    return { getText: () => "" };
+  }
+};
 
-const getNumberFromText = (text) => {
-    text = text.replace(/\s/g, '')
-    text = text.replace(/,/g, '')
-    return parseInt(text);
-}
+const now = new Date();
+var nowAsString =
+  now.getMonth() +
+  "-" +
+  now.getDate() +
+  "-" +
+  now.getFullYear() +
+  "_" +
+  now.getHours() +
+  "-" +
+  now.getMinutes() +
+  "-" +
+  now.getSeconds();
 
-const getFrequencyNums = (text) => {
-    const [memClockFrequencyTextMax, memClockFrequencyTextMin] = text.split('(')
-    return [getNumberFromText(memClockFrequencyTextMin), getNumberFromText(memClockFrequencyTextMax)]
-}
+var stream = fs.createWriteStream(`training-data-${nowAsString}.csv`);
+var errstream = fs.createWriteStream(`training-errors-${nowAsString}.csv`);
 
-const scoreElement = await getLoadedElement('#body > div.container > div.result-header.clearfix.mb0.hidden > div.result-header-details.column3-2 > div.result-header-details-header.clearfix > h1 > span:nth-child(2)')
-const scoreText = await scoreElement.getText()
-page.score = getNumberFromText(scoreText)
+process.on("SIGINT", () => {
+  stream.end();
+  driver.close();
+});
 
-const graphicsCardElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(2) > a');
-page.graphicsCard = await graphicsCardElement.getText()
+// errstream.once("open", async function (fd) {
+// this is a race condition but it should pretty much always work and I don't feel like figuring out why it's not
+stream.once("open", async function (fd) {
+  let isFirstRun = true;
+  while (true) {
+    let hasErrorElement = true;
+    let randomEightDigitNum;
+    try {
+      do {
+        randomEightDigitNum = Math.floor((Math.random() / 2) * 10 ** 8);
+        await driver.get("https://www.3dmark.com/spy/" + randomEightDigitNum);
+        //   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-const numCardsElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(6)')
-const numCardsText = await numCardsElement.getText()
-page.numCards = getNumberFromText(numCardsText)
+        //   errorElement = await getLoadedElement(
+        //     "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
+        //   );
+        let errorElement = await driver.findElements(
+          By.css(
+            "#body > div.container > div > div.column3-2.maincontent > div > div > div.error"
+          )
+        );
+        hasErrorElement = errorElement.length;
+      } while (hasErrorElement);
+      const page = {};
 
-const crossFireElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(8)')
-const crossFireText = await crossFireElement.getText()
-page.crossFire = crossFireText.toLowerCase() === 'on';
+      const setPageValues = (section, field, value) => {
+        field = field.toLowerCase().trim();
+        switch (field) {
+          case "average temperature":
+          case "average memory clock frequency":
+          case "average clock frequency":
+          case "memory":
+            page[section + " " + field] = value;
+            break;
 
-const gpuMemory = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(10)')
-page.gpuMemory = await gpuMemory.getText()
+          case "clock frequency":
+          case "memory clock frequency":
+            [
+              page[section + " " + field + " min"],
+              page[section + " " + field + " max"],
+            ] = value;
+            break;
 
-const gpuClockSpeedElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(12)')
-const gpuClockSpeedText = await gpuClockSpeedElement.getText();
-([page.gpuClockSpeedMin, page.gpuClockSpeedMax] = getFrequencyNums(gpuClockSpeedText))
+          case "physical / logical processors":
+            [
+              page[section + " physical processors"],
+              page[section + " logical processors"],
+            ] = value;
+            break;
 
-const avgGpuClockFrequencyElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(14)')
-const avgGpuClockFrequencyText = await avgGpuClockFrequencyElement.getText()
-page.avgGpuClockFrequency = getNumberFromText(avgGpuClockFrequencyText);
+          case "module 1":
+          case "module 2":
+            [
+              page[section + " " + field + " size"],
+              page[section + " " + field + " brand"],
+              page[section + " " + field + " speed"],
+            ] = value;
+            break;
 
-const memClockFrequencyElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(16)')
-const memClockFrequencyText = await memClockFrequencyElement.getText();
-([page.memClockFrequencyMin, page.memClockFrequencyMax] = getFrequencyNums(memClockFrequencyText))
+          case "hard drive model":
+            [
+              page[section + " " + field + " size"],
+              page[section + " " + field],
+            ] = value;
 
-const avgMemClockFrequencyElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(18)')
-const avgMemClockFrequencyText = await avgMemClockFrequencyElement.getText()
-page.avgMemClockFrequency = getNumberFromText(avgMemClockFrequencyText)
+          default:
+            page[field] = value;
+            break;
+        }
+      };
 
-const avgTempElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(20)')
-const avgTempText = await avgTempElement.getText()
-page.avgTemp = getNumberFromText(avgTempText)
+      page["3dmark id"] = randomEightDigitNum;
 
-const driverVersionElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(22)')
-page.driverVersion = await driverVersionElement.getText()
+      const scoreElement = await getLoadedElement(
+        "#body > div.container > div.result-header.clearfix.mb0.hidden > div.result-header-details.column3-2 > div.result-header-details-header.clearfix > h1 > span:nth-child(2)"
+      );
+      const score = await scoreElement.getText();
+      page["score"] = getNumberFromText(score);
 
-const driverStatus = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(24)')
-page.driverStatus = await driverStatus.getText() // TODO investigate what options are available here
+      const gpuInfo = await getLoadedElement(
+        "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl"
+      );
+      const gpuInfoFields = await gpuInfo.findElements(By.css("dt"));
+      const gpuInfoValues = await gpuInfo.findElements(By.css("dd"));
 
-const eccMemory = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(2) > dl > dd:nth-child(26)')
-page.eccMemory = await eccMemory.getText() // TODO investigate what options are available here
+      for (let i = 0; i < gpuInfoFields.length; i++) {
+        const field = await gpuInfoFields[i].getText();
+        const value = await getFieldValue(field, gpuInfoValues[i]);
+        setPageValues("gpu", field, value);
+      }
 
-const processorName = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(2)')
-page.processorName = await processorName.getText()
+      const cpuInfo = await getLoadedElement(
+        "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl"
+      );
+      const cpuInfoFields = await cpuInfo.findElements(By.css("dt"));
+      const cpuInfoValues = await cpuInfo.findElements(By.css("dd"));
 
-const cpuClockFrequency = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(4)')
-page.cpuClockFrequency = await cpuClockFrequency.getText();
-([page.cpuClockFrequencyMin, page.cpuClockFrequencyMax] = getFrequencyNums(page.cpuClockFrequency))
+      for (let i = 0; i < cpuInfoFields.length; i++) {
+        const field = await cpuInfoFields[i].getText();
+        const value = await getFieldValue(field, cpuInfoValues[i]);
+        setPageValues("cpu", field, value);
+      }
 
-const avgClockFreqency = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(6)')
-page.avgClockFreqency = await avgClockFreqency.getText()
-page.avgClockFreqency = getNumberFromText(page.avgClockFreqency)
+      const generalInfo = await getLoadedElement(
+        "#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl"
+      );
+      const generalInfoFields = await generalInfo.findElements(By.css("dt"));
+      const generalInfoValues = await generalInfo.findElements(By.css("dd"));
 
-const cpuTemp = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(8)')
-page.cpuTemp = await cpuTemp.getText()
-page.cpuTemp = getNumberFromText(page.cpuTemp)
+      for (let i = 0; i < generalInfoFields.length; i++) {
+        const field = await generalInfoFields[i].getText();
+        const value = await getFieldValue(field, generalInfoValues[i]);
+        setPageValues("general", field, value);
+      }
 
-const physicalLogicalProcessorsElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(10)')
-const physicalLogicalProcessorsText = await physicalLogicalProcessorsElement.getText();
-const [physicalProcessors, logicalProcessors] = physicalLogicalProcessorsText.split('/')
-page.physicalProcessors = getNumberFromText(physicalProcessors)
-page.logicalProcessors = getNumberFromText(logicalProcessors)
+      if (isFirstRun) {
+        isFirstRun = false;
+        stream.write(fields.join(","));
+        stream.write("\n");
+      }
 
-const coreCountElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(12)')
-const coreCountText = await coreCountElement.getText();
-page.coreCount = getNumberFromText(coreCountText)
-
-const packageElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(14)')
-page.package = await packageElement.getText();
-
-const manufacturingProcessElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(16)')
-const manufacturingProcessText = await manufacturingProcessElement.getText();
-page.manufacturingProcess = getNumberFromText(manufacturingProcessText)
-
-const tdpElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(4) > dl > dd:nth-child(18)')
-const tdpText = await tdpElement.getText();
-page.tdp = getNumberFromText(tdpText)
-
-const osElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(2)')
-let osText = await osElement.getText();
-osText = osText.split(' (')
-page.os = osText[0]
-
-const motherboardModelElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(4)')
-page.motherboardModel = await motherboardModelElement.getText();
-
-const memoryElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(6)')
-const memoryText = await memoryElement.getText();
-page.memory = getNumberFromText(memoryText)
-
-const getModuleInfo = (text) => {
-    const [memModSize, remainingMemModText] = text.split(' MB ')
-    const [memModBrand, memModSpeed] = remainingMemModText.split(' @ ')
-    return [memModSize, memModBrand, memModSpeed]
-}
-const memoryModule1Element = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(8)')
-const memoryModule1Text = await memoryModule1Element.getText();
-([page.memMod1Size, page.memMod1Brand, page.memMod1Speed] = getModuleInfo(memoryModule1Text))
-
-const memoryModule2Element = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(10)')
-const memoryModule2Text = await memoryModule2Element.getText();
-([page.memMod2Size, page.memMod2Brand, page.memMod2Speed] = getModuleInfo(memoryModule2Text))
-
-const hardDriveElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(12)')
-const hardDriveText = await hardDriveElement.getText();
-const [hardDriveSizeText, hardDriveModelText] = hardDriveText.split(' GB ');
-page.hardDriveSize = getNumberFromText(hardDriveSizeText)
-page.hardDriveModel = hardDriveModelText
-
-const vbsStatusElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(14)')
-page.vbsStatus = await vbsStatusElement.getText()
-
-const hvciStatusElement = await getLoadedElement('#body > div.container > div.column1.maincontent > div > div.column3-2 > div > div:nth-child(5) > dl > dd:nth-child(16)')
-page.hvciStatus = await hvciStatusElement.getText()
-
-
-driver.close();
-
-console.log("page:", page);
+      let row = fields.map((field) => page[field]);
+      stream.write(row.join(","));
+      stream.write("\n");
+    } catch (e) {
+      errstream.write(`${randomEightDigitNum}\t${e.message}\n`);
+    }
+  }
+});
+// });
